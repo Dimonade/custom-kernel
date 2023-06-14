@@ -17,15 +17,16 @@ class KConfigSubtype(type):
     """
     Metaclass for KConfigParameter, used to return the correct subtype on creation
     """
+
     def __call__(cls, *args, **kwargs):
         """
         Returns the correct subtype based on either the type parameter or the config line
         """
-        if 'type' not in kwargs and not args:
+        if "type" not in kwargs and not args:
             return super().__call__(*args, **kwargs)
 
-        if 'type' in kwargs:
-            t = kwargs.pop('type')
+        if "type" in kwargs:
+            t = kwargs.pop("type")
             return getattr(KConfigTypes, t).value(*args, **kwargs)
 
         for t in KConfigTypes:
@@ -33,7 +34,7 @@ class KConfigSubtype(type):
                 # Remove the first argument, which is the config line
                 args = args[1:]
                 if prompt := match.group(1):
-                    kwargs['value'] = prompt
+                    kwargs["value"] = prompt
                 return t.value(*args, **kwargs)
         return super().__call__(*args, **kwargs)
 
@@ -42,16 +43,17 @@ def parse_with_type(cls):
     """
     Decorator for KConfigParameter subclasses, adds variable parsing functionality
     """
+
     class KConfigParameterWithType(cls):
         _variable_type_regex = r'^\s*{var_type}\s*"?(.+)(?:")$'
-        variable_types = ['string', 'bool', 'tristate']
+        variable_types = ["string", "bool", "tristate"]
 
         def _init_parameters(self):
             """
             Custom init_parameters extention for KConfigParameterWithType
             """
             super()._init_parameters()
-            self.parameters['variable_type'] = None
+            self.parameters["variable_type"] = None
 
         def process_line(self, config_line):
             """
@@ -60,7 +62,9 @@ def parse_with_type(cls):
             # First use the super function
             super_result = super().process_line(config_line)
 
-            self.logger.debug("Attempting to process type information: %s" % config_line)
+            self.logger.debug(
+                "Attempting to process type information: %s" % config_line
+            )
             # Check if the line contains a variable type
             for var_type in self.variable_types:
                 re_str = self._variable_type_regex.format(var_type=var_type)
@@ -84,12 +88,12 @@ class KConfigParameter(metaclass=KConfigSubtype):
     """
     Abstraction of a general KConfig Parameter
     """
+
     def _init_parameters(self):
         """
         Initializes self.parameters, extended by subclasses
         """
-        self.parameters = {'default': None,
-                           'value': None}
+        self.parameters = {"default": None, "value": None}
 
     def __init__(self, *args, **kwargs):
         """
@@ -115,7 +119,11 @@ class KConfigParameter(metaclass=KConfigSubtype):
         Returns a string representation of the KConfigParameter
         """
         out_str = f"{self.__class__.__name__}: "
-        (out_str.append(getattr(self, parameter)) for parameter in self.parameters if parameter)
+        (
+            out_str.append(getattr(self, parameter))
+            for parameter in self.parameters
+            if parameter
+        )
         return out_str
 
 
@@ -123,20 +131,22 @@ class KConfigChoice(KConfigParameter):
     """
     Abstraction of a linux kernel KConfig choice option
     """
+
     # Choices start with "choice" followed by nothing, or the choice name
     # Captures the prompt name if present
-    start_regex = r'choice\s*(.+)*'
-    end_regex = '^endchoice.*$'
+    start_regex = r"choice\s*(.+)*"
+    end_regex = "^endchoice.*$"
 
 
 class KConfigMenu(KConfigParameter):
     """
     Abstraction of a linux kernel KConfig menu option
     """
+
     # Menus start with "menu" followed by nothing, or the menu name
     # Captures the prompt name if present
-    start_regex = r'^menu\s*(.+)*$'
-    end_regex = '^endmenu.*$'
+    start_regex = r"^menu\s*(.+)*$"
+    end_regex = "^endmenu.*$"
 
 
 @parse_with_type
@@ -144,9 +154,10 @@ class KConfigMenuconfig(KConfigParameter):
     """
     Abstraction of a linux kernel KConfig menuconfig option
     """
+
     # Menuconfigs start with "menuconfig" followed by nothing, or the menuconfig name
     # Captures the prompt name if present
-    start_regex = r'menuconfig\s*(.+)*'
+    start_regex = r"menuconfig\s*(.+)*"
 
 
 @parse_with_type
@@ -154,9 +165,10 @@ class KConfigConfig(KConfigParameter):
     """
     Abstraction of a linux kernel KConfig config option
     """
+
     # Configs start with "config" followed by the config name
     # Captures the prompt name if present
-    start_regex = r'^config\s*(.+)*$'
+    start_regex = r"^config\s*(.+)*$"
     variable_type = None
 
 
@@ -164,10 +176,11 @@ class KConfigIf(KConfigParameter):
     """
     Abstraction of a linux kernel KConfig if option
     """
+
     # Ifs start with "if" followed by the if name
     # Captures the prompt name if present
-    start_regex = r'if\s*(.+)*'
-    end_regex = r'^endif.*$'
+    start_regex = r"if\s*(.+)*"
+    end_regex = r"^endif.*$"
 
 
 class KConfigTypes(Enum):
@@ -186,9 +199,17 @@ class KConfig:
     All KConfig objects are meant to be used as a collection of KConfigParameter objects
     They share a common base path and architecture, and can be used to parse KConfig files
     """
+
     _source_re = r'^source\s+"(.+)"$'
 
-    def __init__(self, file_path="Kconfig", base_path="/usr/src/linux", arch="x86", *args, **kwargs):
+    def __init__(
+        self,
+        file_path="Kconfig",
+        base_path="/usr/src/linux",
+        arch="x86",
+        *args,
+        **kwargs,
+    ):
         """
         Creates a KConfig object
         """
@@ -204,7 +225,7 @@ class KConfig:
         """
         Parses a KConfig file
         """
-        with open(f"{self.base_path}/{self.file_path}", 'r') as config_file:
+        with open(f"{self.base_path}/{self.file_path}", "r") as config_file:
             self.logger.info("Parsing config file: %s" % config_file.name)
             for line in config_file:
                 self.parse_line(line)
@@ -213,10 +234,10 @@ class KConfig:
         """
         Checks if a line should be skipped
         """
-        if config_line.startswith('#'):
+        if config_line.startswith("#"):
             self.logger.log(5, "Skipping comment: %s" % config_line)
             return True
-        elif config_line == '':
+        elif config_line == "":
             self.logger.log(5, "Skipping empty line")
             return True
         else:
@@ -243,8 +264,12 @@ class KConfig:
             self.process_source(source)
             self.logger.info("Added source: %s" % source)
         # Attempt to process the line with the current config parameter if it's set
-        elif hasattr(self, 'current_parameter') and self.current_parameter.process_line(config_line):
-            self.logger.debug("Line processed using current parameter: %s" % self.current_parameter)
+        elif hasattr(self, "current_parameter") and self.current_parameter.process_line(
+            config_line
+        ):
+            self.logger.debug(
+                "Line processed using current parameter: %s" % self.current_parameter
+            )
             return
         # Create a new config parameter using the line
         elif line_config := KConfigParameter(config_line):
@@ -258,7 +283,9 @@ class KConfig:
         if source.endswith(".include"):
             self.logger.warning("Skipping include: %s" % source)
             return
-        self.sub_configs[source] = KConfig(base_path=self.base_path, arch=self.arch, file_path=source)
+        self.sub_configs[source] = KConfig(
+            base_path=self.base_path, arch=self.arch, file_path=source
+        )
 
     def substitute_vars(self, config_line):
         """
@@ -277,7 +304,7 @@ class KConfig:
         prints the contents of the KConfig object
         """
         out_str = f"Printing config for: {self.base_path}/{self.file_path}\n"
-        if hasattr(self, 'current_parameter'):
+        if hasattr(self, "current_parameter"):
             out_str += str(self.current_parameter)
 
         for config in self.sub_configs.values():
@@ -297,7 +324,8 @@ class KernelDict(dict):
     Mostly just an updated __setitem__
 
     """
-    def __init__(self, config_values={}, config_file='config.yaml', *args, **kwargs):
+
+    def __init__(self, config_values={}, config_file="config.yaml", *args, **kwargs):
         """
         The config values should be a dict containing configuration, mostly to be used with expressions
         If config_file is set, it should be a path to a yaml file containing the config values
@@ -322,21 +350,23 @@ class KernelDict(dict):
         Loads the config values from the config file
         """
         from yaml import safe_load
-        with open(self.config_file, 'r') as config_file:
+
+        with open(self.config_file, "r") as config_file:
             for key, value in safe_load(config_file).items():
-                if key == 'templates':
+                if key == "templates":
                     self.load_yaml_template(value)
                 else:
                     self.config_values[key] = value
 
     @handle_plural
-    def load_yaml_template(self, template_file, template_dir='templates'):
+    def load_yaml_template(self, template_file, template_dir="templates"):
         """
         Reads a yaml file containing kernel config values
         """
-        template_file += '.yaml' if not template_file.endswith('.yaml') else ''
+        template_file += ".yaml" if not template_file.endswith(".yaml") else ""
         from yaml import safe_load
-        with open(f"{template_dir}/{template_file}", 'r') as yaml_file:
+
+        with open(f"{template_dir}/{template_file}", "r") as yaml_file:
             for key, value in safe_load(yaml_file).items():
                 self[key] = value
 
@@ -350,24 +380,26 @@ class KernelDict(dict):
         NOTE: The standard processing method treats the value as a string, and the key as the name
         """
         kwargs = dict()
-        kwargs['logger'] = self.logger
-        kwargs['name'] = name
+        kwargs["logger"] = self.logger
+        kwargs["name"] = name
 
         if parameters is None:
-            kwargs['defined'] = False
+            kwargs["defined"] = False
         elif isinstance(parameters, dict):
             self.logger.info("Advanced parameters detected for config: %s" % name)
             self.logger.debug("Parameters: %s" % parameters)
-            kwargs['value'] = parameters['value']
-            if 'description' in parameters:
-                kwargs['description'] = parameters['description']
-            if 'if' in parameters:
+            kwargs["value"] = parameters["value"]
+            if "description" in parameters:
+                kwargs["description"] = parameters["description"]
+            if "if" in parameters:
                 # if there is an if expression, check it
-                if True not in [self.check_expression(expression) for expression in parameters['if']]:
-                    self.logger.warning("All tests failed for: %s" % parameters['if'])
+                if True not in [
+                    self.check_expression(expression) for expression in parameters["if"]
+                ]:
+                    self.logger.warning("All tests failed for: %s" % parameters["if"])
                     return
         else:
-            kwargs['value'] = str(parameters)
+            kwargs["value"] = str(parameters)
 
         return LinuxKernelConfigParameter(**kwargs)
 
@@ -390,10 +422,10 @@ class KernelDict(dict):
         """
         self.logger.debug("Checking expression: %s" % expression)
         output = False
-        if 'is' in expression:
+        if "is" in expression:
             output = self._expression_is(expression)
 
-        if 'in' in expression:
+        if "in" in expression:
             output = self._expression_in(expression)
 
         return output
@@ -402,8 +434,8 @@ class KernelDict(dict):
         """
         Checks that the 'value' is equal to the config parameter corresponding to the 'is' key
         """
-        value = expression['value']
-        config = self.config_values[expression['is']]
+        value = expression["value"]
+        config = self.config_values[expression["is"]]
         self.logger.debug("Checking that '%s' is equal to: %s" % (value, config))
         return True if value == config else False
 
@@ -411,8 +443,8 @@ class KernelDict(dict):
         """
         Checks that the 'value' is in the config parameter corresponding to the 'in' key
         """
-        value = expression['value']
-        config = self.config_values[expression['in']]
+        value = expression["value"]
+        config = self.config_values[expression["in"]]
         self.logger.debug("Checking that '%s' is in list: %s" % (value, config))
         return True if value in config else False
 
@@ -425,14 +457,19 @@ class LinuxKernelConfigParameter:
     """
     Abstraction of a linux kernel .config parameter
     """
-    _invalid_name_chars = r'[^a-zA0-Z_0-9]'
-    _basic_value_match = r'^(-?([0-9])+|[ynm])'
-    _string_value_patch = r'^([a-zA-Z0-9/_.,-=\(\) ])*$'
 
-    components = OrderedDict({'name': {'required': True},
-                              'value': {'required': False},
-                              'defined': {'required': False, 'default': True},
-                              'description': {'required': False}})
+    _invalid_name_chars = r"[^a-zA0-Z_0-9]"
+    _basic_value_match = r"^(-?([0-9])+|[ynm])"
+    _string_value_patch = r"^([a-zA-Z0-9/_.,-=\(\) ])*$"
+
+    components = OrderedDict(
+        {
+            "name": {"required": True},
+            "value": {"required": False},
+            "defined": {"required": False, "default": True},
+            "description": {"required": False},
+        }
+    )
 
     def __init__(self, *args, **kwargs):
         """
@@ -443,9 +480,9 @@ class LinuxKernelConfigParameter:
         for component_name, specification in self.components.items():
             if component_name in kwargs:
                 setattr(self, component_name, kwargs[component_name])
-            elif 'default' in specification:
-                setattr(self, component_name, specification['default'])
-            elif specification['required']:
+            elif "default" in specification:
+                setattr(self, component_name, specification["default"])
+            elif specification["required"]:
                 raise ValueError(f"Missing required component {component_name}")
 
     def __setattr__(self, name, value):
@@ -474,24 +511,30 @@ class LinuxKernelConfigParameter:
         """
         name = name.upper()
 
-        if not name.startswith('CONFIG_'):
-            self.logger.info("Config name '%s' does not start with 'CONFIG_', appending" % name)
-            name = 'CONFIG_' + name
+        if not name.startswith("CONFIG_"):
+            self.logger.info(
+                "Config name '%s' does not start with 'CONFIG_', appending" % name
+            )
+            name = "CONFIG_" + name
 
-        super().__setattr__('name', name)
+        super().__setattr__("name", name)
 
     def _set_value(self, value):
         """
         Sets the value of the config parameter
         """
         if value is None:
-            self.logger.warning("Value for '%s' is None, setting defined to False" % self.name)
+            self.logger.warning(
+                "Value for '%s' is None, setting defined to False" % self.name
+            )
             self.defined = False
         else:
-            self.logger.debug("Value for '%s' is defined, setting defined to True" % self.name)
+            self.logger.debug(
+                "Value for '%s' is defined, setting defined to True" % self.name
+            )
             self.defined = True
 
-        super().__setattr__('value', value)
+        super().__setattr__("value", value)
 
     def _validate_name(self, name):
         """Validates the characters in a kernel config parameter name"""
@@ -511,8 +554,13 @@ class LinuxKernelConfigParameter:
             return False
 
     def __str__(self):
-        output_str = f"# {self.description}\n" if hasattr(self, 'description') else ""
-        out_val = self.value if re.search(self._basic_value_match, str(self.value)) else f'"{self.value}"'
-        output_str += f"{self.name}={out_val}" if self.defined else f"# {self.name} is not set"
+        output_str = f"# {self.description}\n" if hasattr(self, "description") else ""
+        out_val = (
+            self.value
+            if re.search(self._basic_value_match, str(self.value))
+            else f'"{self.value}"'
+        )
+        output_str += (
+            f"{self.name}={out_val}" if self.defined else f"# {self.name} is not set"
+        )
         return output_str
-

@@ -1,8 +1,8 @@
 """
 A collection of classes and decorators
 """
-__version__ = '2.4.0'
-__author__ = 'desultory'
+__version__ = "2.4.0"
+__author__ = "desultory"
 
 import logging
 from sys import modules
@@ -15,6 +15,7 @@ def update_init(decorator):
     Updates the init function of a class
     puts the decorated function at the end of the init
     """
+
     def decorator_wrapper(cls):
         original_init = cls.__init__
 
@@ -24,6 +25,7 @@ def update_init(decorator):
 
         cls.__init__ = new_init
         return cls
+
     return decorator_wrapper
 
 
@@ -32,6 +34,7 @@ def handle_plural(function):
     Wraps functions to take a list/dict and iterate over it
     the last argument should be iterable
     """
+
     def wrapper(self, *args):
         if len(args) == 1:
             focus_arg = args[0]
@@ -45,10 +48,20 @@ def handle_plural(function):
                 function(self, *(other_args + (item,)))
         elif isinstance(focus_arg, dict):
             for key, value in focus_arg.items():
-                function(self, *(other_args + (key, value,)))
+                function(
+                    self,
+                    *(
+                        other_args
+                        + (
+                            key,
+                            value,
+                        )
+                    ),
+                )
         else:
             self.logger.debug("Arguments were not expanded: %s" % args)
             function(self, *args)
+
     return wrapper
 
 
@@ -57,8 +70,9 @@ def threaded(function):
     Simply starts a function in a thread
     Adds it to an internal _threads list for handling
     """
+
     def wrapper(self, *args, **kwargs):
-        if not hasattr(self, '_threads'):
+        if not hasattr(self, "_threads"):
             self._threads = list()
 
         thread_exception = Queue()
@@ -71,9 +85,15 @@ def threaded(function):
                 thread_exception.put(e)
                 self.logger.debug(e)
 
-        thread = Thread(target=exception_wrapper, args=(self, *args), kwargs=kwargs, name=function.__name__)
+        thread = Thread(
+            target=exception_wrapper,
+            args=(self, *args),
+            kwargs=kwargs,
+            name=function.__name__,
+        )
         thread.start()
         self._threads.append((thread, thread_exception))
+
     return wrapper
 
 
@@ -83,9 +103,10 @@ def add_thread(name, target, description=None):
     Creates a dict that contains the name of the thread as a key, with the thread as a value
     Cteates basic helper functions to manage the thread
     """
+
     def decorator(cls):
         def create_thread(self):
-            if not hasattr(self, 'threads'):
+            if not hasattr(self, "threads"):
                 self.threads = dict()
 
             if "." in target:
@@ -132,6 +153,7 @@ def add_thread(name, target, description=None):
         setattr(cls, f"stop_{name}_thread", stop_thread)
 
         return update_init(create_thread)(cls)
+
     return decorator
 
 
@@ -139,13 +161,20 @@ def thread_wrapped(thread_name):
     """
     Wrap a class function to be used with add_thread
     """
+
     def decorator(function):
         def wrapper(self, *args, **kwargs):
-            self.logger.info("Starting the processing loop for thread: %s" % thread_name)
+            self.logger.info(
+                "Starting the processing loop for thread: %s" % thread_name
+            )
             while not getattr(self, f"_stop_processing_{thread_name}").is_set():
                 function(self, *args, **kwargs)
-            self.logger.info("The processing loop has ended for thread: %s" % thread_name)
+            self.logger.info(
+                "The processing loop has ended for thread: %s" % thread_name
+            )
+
         return wrapper
+
     return decorator
 
 
@@ -153,9 +182,14 @@ def class_logger(cls):
     """
     Decorator for classes to add a logging object and log basic tasks
     """
+
     class ClassWrapper(cls):
         def __init__(self, *args, **kwargs):
-            parent_logger = kwargs.pop('logger') if isinstance(kwargs.get('logger'), logging.Logger) else logging.getLogger()
+            parent_logger = (
+                kwargs.pop("logger")
+                if isinstance(kwargs.get("logger"), logging.Logger)
+                else logging.getLogger()
+            )
             self.logger = parent_logger.getChild(cls.__name__)
             self.logger.setLevel(self.logger.parent.level)
 
@@ -173,16 +207,18 @@ def class_logger(cls):
                 self.logger.addHandler(color_stream_handler)
                 self.logger.info("Adding default handler: %s" % self.logger)
 
-            if kwargs.get('_log_init', True) is True:
+            if kwargs.get("_log_init", True) is True:
                 self.logger.info("Intializing class: %s" % cls.__name__)
 
                 if args:
                     self.logger.debug("Args: %s" % repr(args))
                 if kwargs:
                     self.logger.debug("Kwargs: %s" % repr(kwargs))
-                if module_version := getattr(modules[cls.__module__], '__version__', None):
+                if module_version := getattr(
+                    modules[cls.__module__], "__version__", None
+                ):
                     self.logger.info("Module version: %s" % module_version)
-                if class_version := getattr(cls, '__version__', None):
+                if class_version := getattr(cls, "__version__", None):
                     self.logger.info("Class version: %s" % class_version)
             else:
                 self.logger.log(5, "Init debug logging disabled for: %s" % cls.__name__)
@@ -194,7 +230,12 @@ def class_logger(cls):
             if not isinstance(self.logger, logging.Logger):
                 raise ValueError("The logger is not defined")
 
-            if isinstance(value, list) or isinstance(value, dict) or isinstance(value, str) and "\n" in value:
+            if (
+                isinstance(value, list)
+                or isinstance(value, dict)
+                or isinstance(value, str)
+                and "\n" in value
+            ):
                 self.logger.log(5, "Set '%s' to:\n%s" % (name, value))
             else:
                 self.logger.log(5, "Set '%s' to: %s" % (name, value))
@@ -216,32 +257,39 @@ class ColorLognameFormatter(logging.Formatter):
 
     _level_str_len = 8
     # Define the color codes
-    _reset_str = '\x1b[0m'
-    _grey_str = '\x1b[37m'
-    _blue_str = '\x1b[34m'
-    _yllw_str = '\x1b[33m'
-    _sred_str = '\x1b[31m'
-    _bred_str = '\x1b[31;1m'
-    _magenta_str = '\x1b[35m'
+    _reset_str = "\x1b[0m"
+    _grey_str = "\x1b[37m"
+    _blue_str = "\x1b[34m"
+    _yllw_str = "\x1b[33m"
+    _sred_str = "\x1b[31m"
+    _bred_str = "\x1b[31;1m"
+    _magenta_str = "\x1b[35m"
     # Make the basic strings
     _debug_color_str = f"{_grey_str}DEBUG{_reset_str}".ljust(
-        _level_str_len + len(_reset_str) + len(_grey_str), ' ')
+        _level_str_len + len(_reset_str) + len(_grey_str), " "
+    )
     _info_color_str = f"{_blue_str}INFO{_reset_str}".ljust(
-        _level_str_len + len(_reset_str) + len(_blue_str), ' ')
+        _level_str_len + len(_reset_str) + len(_blue_str), " "
+    )
     _warn_color_str = f"{_yllw_str}WARNING{_reset_str}".ljust(
-        _level_str_len + len(_reset_str) + len(_yllw_str), ' ')
+        _level_str_len + len(_reset_str) + len(_yllw_str), " "
+    )
     _error_color_str = f"{_sred_str}ERROR{_reset_str}".ljust(
-        _level_str_len + len(_reset_str) + len(_sred_str), ' ')
+        _level_str_len + len(_reset_str) + len(_sred_str), " "
+    )
     _crit_color_str = f"{_bred_str}CRITICAL{_reset_str}".ljust(
-        _level_str_len + len(_reset_str) + len(_bred_str), ' ')
+        _level_str_len + len(_reset_str) + len(_bred_str), " "
+    )
     # Format into a dict
-    _color_levelname = {'DEBUG': _debug_color_str,
-                        'INFO': _info_color_str,
-                        'WARNING': _warn_color_str,
-                        'ERROR': _error_color_str,
-                        'CRITICAL': _crit_color_str}
+    _color_levelname = {
+        "DEBUG": _debug_color_str,
+        "INFO": _info_color_str,
+        "WARNING": _warn_color_str,
+        "ERROR": _error_color_str,
+        "CRITICAL": _crit_color_str,
+    }
 
-    def __init__(self, fmt='%(levelname)s | %(message)s', *args, **kwargs):
+    def __init__(self, fmt="%(levelname)s | %(message)s", *args, **kwargs):
         super().__init__(fmt, *args, **kwargs)
 
     def format(self, record):
@@ -251,8 +299,12 @@ class ColorLognameFormatter(logging.Formatter):
         if record.levelname in self._color_levelname:
             record.levelname = self._color_levelname[record.levelname]
         else:
-            record.levelname = f"{self._magenta_str}{record.levelname}{self._reset_str}".ljust(
-                self._level_str_len + len(self._magenta_str) + len(self._reset_str), ' ')
+            record.levelname = (
+                f"{self._magenta_str}{record.levelname}{self._reset_str}".ljust(
+                    self._level_str_len + len(self._magenta_str) + len(self._reset_str),
+                    " ",
+                )
+            )
 
         format_str = super().format(record)
 
@@ -269,6 +321,7 @@ class NoDupFlatList(list):
     """
     List that automatically filters duplicate elements when appended and concatenated
     """
+
     __version__ = "0.2.0"
 
     def __init__(self, no_warn=False, log_bump=0, *args, **kwargs):
@@ -286,4 +339,3 @@ class NoDupFlatList(list):
     def __iadd__(self, item):
         self.append(item)
         return self
-
